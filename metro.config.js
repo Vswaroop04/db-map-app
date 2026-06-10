@@ -17,6 +17,9 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 config.resolver.blockList = [
   new RegExp(`^${esc(path.join(nativewindModules, 'react-native'))}(/.*)?$`),
   new RegExp(`^${esc(path.join(nativewindModules, 'react'))}(/.*)?$`),
+  new RegExp(`^${esc(path.resolve(__dirname, 'seed'))}(/.*)?$`),
+  new RegExp(`^${esc(path.resolve(__dirname, 'seed-script'))}(/.*)?$`),
+  new RegExp(`^${esc(path.resolve(__dirname, 'api-tests'))}(/.*)?$`),
 ];
 
 module.exports = withNativeWind(config, { input: './global.css' });

@@ -1,8 +1,8 @@
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { MiniMap } from '../../components/MiniMap';
 import { categoryEmoji } from '../../lib/utils/distance';
-import { type Place } from '../../lib/store/useLocationStore';
+import { type Place } from '../../lib/types/place';
 
 export default function DetailScreen() {
   const { place: placeJson } = useLocalSearchParams<{ place: string }>();
@@ -56,21 +56,7 @@ export default function DetailScreen() {
 
         <Text className="text-sm font-semibold text-gray-700 mb-3">Location</Text>
         <View className="rounded-xl overflow-hidden" style={{ height: 180 }}>
-          <MapView
-            style={{ flex: 1 }}
-            initialRegion={{
-              latitude: place.latitude,
-              longitude: place.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            pitchEnabled={false}
-            rotateEnabled={false}
-          >
-            <Marker coordinate={{ latitude: place.latitude, longitude: place.longitude }} />
-          </MapView>
+          <MiniMap latitude={place.latitude} longitude={place.longitude} />
         </View>
 
         <Pressable

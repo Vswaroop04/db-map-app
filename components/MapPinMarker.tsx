@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Callout, Marker } from 'react-native-maps';
-import { type Place } from '../lib/store/useLocationStore';
+import { type Place } from '../lib/types/place';
 import { categoryEmoji, formatDistance, haversineMeters } from '../lib/utils/distance';
 
 type Props = {
@@ -13,32 +12,24 @@ type Props = {
 };
 
 export function MapPinMarker({ place, isActive, userLat, userLng, onPress }: Props) {
-  const scale = useRef(new Animated.Value(isActive ? 1.3 : 1)).current;
-
-  useEffect(() => {
-    Animated.spring(scale, {
-      toValue: isActive ? 1.3 : 1,
-      useNativeDriver: true,
-      friction: 4,
-    }).start();
-  }, [isActive]);
-
   const meters = haversineMeters(userLat, userLng, place.latitude, place.longitude);
   const emoji = categoryEmoji(place.category);
+  const size = isActive ? 42 : 32;
 
   return (
     <Marker
+      key={`${place.id}-${isActive}`}
       coordinate={{ latitude: place.latitude, longitude: place.longitude }}
       anchor={{ x: 0.5, y: 1 }}
-      tracksViewChanges={isActive}
+      tracksViewChanges={false}
       onPress={() => onPress(place)}
     >
-      <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+      <View style={{ alignItems: 'center', width: size + 8 }}>
         <View
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
+            width: size,
+            height: size,
+            borderRadius: size / 2,
             borderBottomRightRadius: 0,
             transform: [{ rotate: '45deg' }],
             alignItems: 'center',
@@ -46,11 +37,18 @@ export function MapPinMarker({ place, isActive, userLat, userLng, onPress }: Pro
             backgroundColor: isActive ? '#2563EB' : '#1D4ED8',
             borderWidth: 2,
             borderColor: 'white',
+            shadowColor: '#000',
+            shadowOpacity: 0.2,
+            shadowRadius: 3,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 3,
           }}
         >
-          <Text style={{ transform: [{ rotate: '-45deg' }], fontSize: 14 }}>{emoji}</Text>
+          <Text style={{ transform: [{ rotate: '-45deg' }], fontSize: isActive ? 18 : 13 }}>
+            {emoji}
+          </Text>
         </View>
-      </Animated.View>
+      </View>
       {isActive && (
         <Callout tooltip onPress={() => onPress(place)}>
           <View
