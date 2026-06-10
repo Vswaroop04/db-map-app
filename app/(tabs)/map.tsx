@@ -1,9 +1,8 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
-import MapView from 'react-native-maps';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BottomSheet } from '../../components/BottomSheet';
-import { MapPinMarker } from '../../components/MapPinMarker';
+import { MapRenderer } from '../../components/MapRenderer';
 import { useLocationStore, type Place } from '../../lib/store/useLocationStore';
 
 export default function MapScreen() {
@@ -43,41 +42,16 @@ export default function MapScreen() {
     );
   }
 
-  const region = userLocation
-    ? {
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
-        latitudeDelta: 0.08,
-        longitudeDelta: 0.08,
-      }
-    : {
-        latitude: 51.5074,
-        longitude: -0.1278,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
-      };
-
   return (
     <View className="flex-1">
-      <MapView
-        style={{ flex: 1 }}
-        initialRegion={region}
-        showsUserLocation
-        showsMyLocationButton
-      >
-        {filteredPlaces.map((place) => (
-          <MapPinMarker
-            key={place.id}
-            place={place}
-            isActive={place.id === activeId}
-            userLat={userLocation?.latitude ?? region.latitude}
-            userLng={userLocation?.longitude ?? region.longitude}
-            onPress={handlePinPress}
-          />
-        ))}
-      </MapView>
+      <MapRenderer
+        places={filteredPlaces}
+        activeId={activeId}
+        userLocation={userLocation}
+        onPinPress={handlePinPress}
+      />
 
-      {userLocation && (
+      {Platform.OS !== 'web' && userLocation && (
         <BottomSheet
           places={filteredPlaces}
           activeId={activeId}
