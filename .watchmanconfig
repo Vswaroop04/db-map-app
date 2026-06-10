@@ -1,0 +1,3 @@
+{
+  "ignore_dirs": ["seed", "seed-script", "api-tests"]
+}
