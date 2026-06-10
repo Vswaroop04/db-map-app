@@ -10,22 +10,17 @@ type Props = {
   userLat: number;
   userLng: number;
   onPress: (place: Place) => void;
+  onCalloutPress: (place: Place) => void;
 };
 
-export function MapPinMarker({ place, isActive, userLat, userLng, onPress }: Props) {
+export function MapPinMarker({ place, isActive, userLat, userLng, onPress, onCalloutPress }: Props) {
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
 
+  // render once then stop tracking — avoids continuous re-renders
   useEffect(() => {
     const timer = setTimeout(() => setTracksViewChanges(false), 500);
     return () => clearTimeout(timer);
   }, []);
-
-  // re-enable briefly when active state changes so iOS re-measures the new size
-  useEffect(() => {
-    setTracksViewChanges(true);
-    const timer = setTimeout(() => setTracksViewChanges(false), 500);
-    return () => clearTimeout(timer);
-  }, [isActive]);
 
   const meters = haversineMeters(userLat, userLng, place.latitude, place.longitude);
   const emoji = categoryEmoji(place.category);
@@ -64,7 +59,7 @@ export function MapPinMarker({ place, isActive, userLat, userLng, onPress }: Pro
         </View>
       </View>
       {isActive && (
-        <Callout tooltip onPress={() => onPress(place)}>
+        <Callout tooltip onPress={() => onCalloutPress(place)}>
           <View
             style={{
               backgroundColor: 'white',
@@ -80,7 +75,7 @@ export function MapPinMarker({ place, isActive, userLat, userLng, onPress }: Pro
               {place.name}
             </Text>
             <Text style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>
-              {formatDistance(meters)} away
+              {formatDistance(meters)} away · tap for details
             </Text>
           </View>
         </Callout>

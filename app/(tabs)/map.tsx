@@ -49,6 +49,7 @@ export default function MapScreen() {
         activeId={activeId}
         userLocation={userLocation}
         onPinPress={handlePinPress}
+        onCalloutPress={handleSelectPlace}
       />
 
       {Platform.OS !== 'web' && userLocation && (

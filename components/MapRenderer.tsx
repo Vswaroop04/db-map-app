@@ -7,9 +7,10 @@ type Props = {
   activeId: string | null;
   userLocation: { latitude: number; longitude: number } | null;
   onPinPress: (place: Place) => void;
+  onCalloutPress: (place: Place) => void;
 };
 
-export function MapRenderer({ places, activeId, userLocation, onPinPress }: Props) {
+export function MapRenderer({ places, activeId, userLocation, onPinPress, onCalloutPress }: Props) {
   const region = userLocation
     ? { ...userLocation, latitudeDelta: 0.08, longitudeDelta: 0.08 }
     : { latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.1, longitudeDelta: 0.1 };
@@ -32,6 +33,7 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress }: Prop
           userLat={userLat}
           userLng={userLng}
           onPress={onPinPress}
+          onCalloutPress={onCalloutPress}
         />
       ))}
     </MapView>
