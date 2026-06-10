@@ -1,0 +1,12 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "tailwindCSS.experimental.classRegex": [
+    ["className=\"([^\"]*)\"", "([^\"]*)"],
+    ["className='([^']*)'", "([^']*)"],
+    ["className={`([^`]*)`}", "([^`]*)"]
+  ],
+  "tailwindCSS.includeLanguages": {
+    "typescriptreact": "html"
+  }
+}
