@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Callout, Marker } from 'react-native-maps';
 import { type Place } from '../lib/types/place';
@@ -12,16 +13,29 @@ type Props = {
 };
 
 export function MapPinMarker({ place, isActive, userLat, userLng, onPress }: Props) {
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTracksViewChanges(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // re-enable briefly when active state changes so iOS re-measures the new size
+  useEffect(() => {
+    setTracksViewChanges(true);
+    const timer = setTimeout(() => setTracksViewChanges(false), 500);
+    return () => clearTimeout(timer);
+  }, [isActive]);
+
   const meters = haversineMeters(userLat, userLng, place.latitude, place.longitude);
   const emoji = categoryEmoji(place.category);
   const size = isActive ? 42 : 32;
 
   return (
     <Marker
-      key={`${place.id}-${isActive}`}
       coordinate={{ latitude: place.latitude, longitude: place.longitude }}
       anchor={{ x: 0.5, y: 1 }}
-      tracksViewChanges={false}
+      tracksViewChanges={tracksViewChanges}
       onPress={() => onPress(place)}
     >
       <View style={{ alignItems: 'center', width: size + 8 }}>
