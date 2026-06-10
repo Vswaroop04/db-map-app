@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { type Place } from '../types/place';
 
 export type Location = {
   id: number;
@@ -16,12 +17,48 @@ export type Location = {
   created_at: string;
 };
 
-export async function fetchLocations(): Promise<Location[]> {
+const RADIUS_DEG = 0.09; // ~10km bounding box
+
+export async function fetchCachedPlaces(lat: number, lng: number): Promise<Place[]> {
   const { data, error } = await supabase
     .from('locations')
     .select('*')
+    .gte('latitude', lat - RADIUS_DEG)
+    .lte('latitude', lat + RADIUS_DEG)
+    .gte('longitude', lng - RADIUS_DEG)
+    .lte('longitude', lng + RADIUS_DEG)
     .order('name');
 
   if (error) throw error;
-  return data ?? [];
+
+  return (data ?? []).map((row: Location) => ({
+    id: row.external_id,
+    name: row.name,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    category: row.category,
+    address: row.address,
+    city: row.city,
+    country: row.country,
+  }));
+}
+
+export async function upsertPlaces(places: Place[]): Promise<void> {
+  const rows = places.map((p) => ({
+    external_id: p.id,
+    source: 'foursquare',
+    name: p.name,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    category: p.category,
+    address: p.address,
+    city: p.city,
+    country: p.country,
+  }));
+
+  const { error } = await supabase
+    .from('locations')
+    .upsert(rows, { onConflict: 'external_id' });
+
+  if (error) throw error;
 }

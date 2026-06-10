@@ -1,45 +1,85 @@
+import * as Location from 'expo-location';
 import { create } from 'zustand';
-import { fetchLocations, type Location } from '../db/locations';
+import { fetchCachedPlaces, upsertPlaces } from '../db/locations';
+import { fetchNearbyPlaces } from '../services/foursquare';
+import { type Place } from '../types/place';
+
+export type { Place } from '../types/place';
 
 type LocationStore = {
-  locations: Location[];
-  filteredLocations: Location[];
+  places: Place[];
+  filteredPlaces: Place[];
   categories: string[];
   selectedCategory: string | null;
+  userLocation: { latitude: number; longitude: number } | null;
+  activeId: string | null;
   loading: boolean;
   error: string | null;
-  fetch: () => Promise<void>;
+  fetchNearby: () => Promise<void>;
   setCategory: (category: string | null) => void;
+  setActiveId: (id: string | null) => void;
 };
 
 export const useLocationStore = create<LocationStore>((set, get) => ({
-  locations: [],
-  filteredLocations: [],
+  places: [],
+  filteredPlaces: [],
   categories: [],
   selectedCategory: null,
+  userLocation: null,
+  activeId: null,
   loading: false,
   error: null,
 
-  fetch: async () => {
+  fetchNearby: async () => {
     set({ loading: true, error: null });
     try {
-      const data = await fetchLocations();
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        set({ error: 'Location permission required to find nearby places.', loading: false });
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const { latitude, longitude } = loc.coords;
+      set({ userLocation: { latitude, longitude } });
+
+      let places: Place[] = await fetchCachedPlaces(latitude, longitude);
+
+      if (places.length === 0) {
+        const results = await fetchNearbyPlaces(latitude, longitude);
+        places = results.map((r) => ({
+          id: r.fsq_place_id,
+          name: r.name,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          category: r.categories[0]?.name ?? null,
+          address: r.location.address ?? null,
+          city: r.location.locality ?? null,
+          country: r.location.country ?? null,
+        }));
+        upsertPlaces(places).catch(() => {}); // fire-and-forget, don't block UI
+      }
+
       const categories = [
-        ...new Set(data.map((l) => l.category).filter(Boolean) as string[]),
+        ...new Set(places.map((p) => p.category).filter(Boolean) as string[]),
       ].sort();
-      set({ locations: data, filteredLocations: data, categories, loading: false });
-    } catch (e) {
-      set({ error: 'Failed to load locations', loading: false });
+
+      set({ places, filteredPlaces: places, categories, loading: false });
+    } catch {
+      set({ error: 'Failed to load nearby places.', loading: false });
     }
   },
 
   setCategory: (category) => {
-    const { locations } = get();
+    const { places } = get();
     set({
       selectedCategory: category,
-      filteredLocations: category
-        ? locations.filter((l) => l.category === category)
-        : locations,
+      filteredPlaces: category
+        ? places.filter((p) => p.category === category)
+        : places,
     });
   },
+
+  setActiveId: (id) => set({ activeId: id }),
 }));
