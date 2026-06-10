@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { fetchCachedPlaces, upsertPlaces } from '../db/locations';
 import { fetchNearbyPlaces } from '../services/foursquare';
@@ -46,7 +47,8 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
 
       let places: Place[] = await fetchCachedPlaces(latitude, longitude);
 
-      if (places.length === 0) {
+      // on web, Foursquare blocks browser requests (CORS) — read from Supabase cache only
+      if (places.length === 0 && Platform.OS !== 'web') {
         const results = await fetchNearbyPlaces(latitude, longitude);
         places = results.map((r) => ({
           id: r.fsq_place_id,
@@ -58,7 +60,7 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
           city: r.location.locality ?? null,
           country: r.location.country ?? null,
         }));
-        upsertPlaces(places).catch(() => {}); // fire-and-forget, don't block UI
+        upsertPlaces(places).catch(() => {});
       }
 
       const categories = [
