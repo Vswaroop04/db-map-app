@@ -16,6 +16,10 @@ export default function MapScreen() {
 
   const handlePinPress = (place: Place) => {
     setActiveId(place.id);
+    router.push({
+      pathname: '/location/[id]',
+      params: { id: place.id, place: JSON.stringify(place) },
+    });
   };
 
   const handleSelectPlace = (place: Place) => {
@@ -49,7 +53,6 @@ export default function MapScreen() {
         activeId={activeId}
         userLocation={userLocation}
         onPinPress={handlePinPress}
-        onCalloutPress={handleSelectPlace}
       />
 
       {Platform.OS !== 'web' && userLocation && (
