@@ -33,7 +33,8 @@ export function MapPinMarker({ place, isActive, userLat, userLng, onPress, onCal
       tracksViewChanges={tracksViewChanges}
       onPress={() => onPress(place)}
     >
-      <View style={{ alignItems: 'center', width: size + 8 }}>
+      {/* fixed outer size keeps anchor stable — only inner pin resizes */}
+      <View style={{ width: 56, height: 56, alignItems: 'center', justifyContent: 'flex-end' }}>
         <View
           style={{
             width: size,
