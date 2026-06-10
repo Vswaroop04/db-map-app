@@ -85,6 +85,11 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress }: Prop
           iconAnchor: [isActive ? 18 : 15, isActive ? 36 : 30],
         });
         const marker = L.marker([place.latitude, place.longitude], { icon }).addTo(map);
+        marker.bindTooltip(place.name, {
+          direction: 'top',
+          offset: [0, -(isActive ? 36 : 30) - 4],
+          className: 'map-pin-tooltip',
+        });
         marker.on('click', () => onPinPressRef.current(place));
         markersRef.current.push(marker);
       });

@@ -19,11 +19,11 @@ export default function ListScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <View style={{ flex: 1, backgroundColor: 'white' }}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="border-b border-gray-100"
+        style={{ flexGrow: 0, flexShrink: 0, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
         contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8, alignItems: 'center' }}
       >
         <Pressable
