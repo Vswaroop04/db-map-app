@@ -15,7 +15,6 @@ export default function MapScreen() {
   }, []);
 
   const handlePinPress = (place: Place) => {
-    setActiveId(place.id);
     router.push({
       pathname: '/location/[id]',
       params: { id: place.id, place: JSON.stringify(place) },
