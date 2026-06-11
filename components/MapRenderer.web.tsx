@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
 import type { Map as LeafletMap, Marker as LeafletMarker } from 'leaflet';
 import { categoryEmoji } from '../lib/utils/distance';
 import { type Place } from '../lib/types/place';
@@ -27,15 +26,37 @@ function pinHtml(emoji: string, active: boolean) {
   "><span style="transform:rotate(45deg);display:block;">${emoji}</span></div>`;
 }
 
+// Injects Leaflet CSS and waits for it to parse before resolving.
+// The <link> in +html.tsx loads asynchronously — if Leaflet initialises first
+// the map panes are position:static and tiles land at wrong positions.
+function loadLeafletCSS(): Promise<void> {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('leaflet-css') as HTMLLinkElement | null;
+    if (existing) {
+      existing.sheet ? resolve() : existing.addEventListener('load', () => resolve(), { once: true });
+      return;
+    }
+    const link = document.createElement('link');
+    link.id = 'leaflet-css';
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.addEventListener('load', () => resolve(), { once: true });
+    link.addEventListener('error', () => resolve(), { once: true });
+    document.head.appendChild(link);
+  });
+}
+
 export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoundsChange }: Props) {
-  const containerRef = useRef<View>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<LeafletMarker[]>([]);
   const onPinPressRef = useRef(onPinPress);
   const onBoundsChangeRef = useRef(onBoundsChange);
+  const userLocationRef = useRef(userLocation);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   onPinPressRef.current = onPinPress;
   onBoundsChangeRef.current = onBoundsChange;
+  userLocationRef.current = userLocation;
 
   const center: [number, number] = userLocation
     ? [userLocation.latitude, userLocation.longitude]
@@ -44,11 +65,14 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let cancelled = false;
-    let ro: ResizeObserver | null = null;
 
     async function init() {
-      const node = containerRef.current as unknown as HTMLDivElement | null;
+      const node = containerRef.current;
       if (!node || mapRef.current) return;
+
+      await loadLeafletCSS();
+      if (cancelled) return;
+
       const L = (await import('leaflet')).default;
       if (cancelled) return;
 
@@ -58,12 +82,28 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
-      // ResizeObserver fires when the container gets real pixel dimensions —
-      // more reliable than setTimeout for flex layouts that resolve after paint.
-      ro = new ResizeObserver(() => {
-        map.invalidateSize();
+      const LocateControl = L.Control.extend({
+        options: { position: 'bottomright' },
+        onAdd() {
+          const btn = L.DomUtil.create('button');
+          btn.title = 'Go to my location';
+          btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`;
+          btn.style.cssText = [
+            'width:36px;height:36px;border-radius:8px;border:none;cursor:pointer;',
+            'background:white;display:flex;align-items:center;justify-content:center;',
+            'box-shadow:0 2px 6px rgba(0,0,0,0.2);color:#1D4ED8;margin-bottom:8px;margin-right:2px;',
+          ].join('');
+          btn.onmouseenter = () => { btn.style.background = '#EFF6FF'; };
+          btn.onmouseleave = () => { btn.style.background = 'white'; };
+          L.DomEvent.on(btn, 'click', () => {
+            const loc = userLocationRef.current;
+            if (loc) map.flyTo([loc.latitude, loc.longitude], 14, { duration: 1 });
+          });
+          L.DomEvent.disableClickPropagation(btn);
+          return btn;
+        },
       });
-      ro.observe(node);
+      new LocateControl().addTo(map);
 
       map.on('moveend', () => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -84,7 +124,6 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
     init();
     return () => {
       cancelled = true;
-      ro?.disconnect();
       if (debounceRef.current) clearTimeout(debounceRef.current);
       mapRef.current?.remove();
       mapRef.current = null;
@@ -128,9 +167,10 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
     return () => { cancelled = true; };
   }, [places, activeId]);
 
-  return <View ref={containerRef} style={styles.map} />;
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#e8eae0' }}
+    />
+  );
 }
-
-const styles = StyleSheet.create({
-  map: { ...StyleSheet.absoluteFillObject, backgroundColor: '#e8eae0' },
-});

@@ -46,7 +46,7 @@ export default function MapScreen() {
   }
 
   return (
-    <View className="flex-1">
+    <View style={{ flex: 1, position: 'relative' }}>
       <MapRenderer
         places={filteredPlaces}
         activeId={activeId}
