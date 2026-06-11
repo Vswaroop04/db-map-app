@@ -70,6 +70,9 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
       });
 
       mapRef.current = map;
+      // Leaflet measures the container at init time; if the div isn't painted yet
+      // tiles render at wrong positions. invalidateSize forces a remeasure.
+      setTimeout(() => map.invalidateSize(), 100);
     }
 
     init();
