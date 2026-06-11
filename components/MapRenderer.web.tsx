@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { Map as LeafletMap, Marker as LeafletMarker } from 'leaflet';
+import type * as LeafletType from 'leaflet';
+import type { Map as LeafletMap, Marker as LeafletMarker, CircleMarker } from 'leaflet';
 import { categoryEmoji } from '../lib/utils/distance';
 import { type Place } from '../lib/types/place';
 import { type Bounds } from '../lib/services/geoapify';
@@ -26,9 +27,6 @@ function pinHtml(emoji: string, active: boolean) {
   "><span style="transform:rotate(45deg);display:block;">${emoji}</span></div>`;
 }
 
-// Injects Leaflet CSS and waits for it to parse before resolving.
-// The <link> in +html.tsx loads asynchronously — if Leaflet initialises first
-// the map panes are position:static and tiles land at wrong positions.
 function loadLeafletCSS(): Promise<void> {
   return new Promise((resolve) => {
     const existing = document.getElementById('leaflet-css') as HTMLLinkElement | null;
@@ -50,13 +48,19 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<LeafletMarker[]>([]);
+  const userDotRef = useRef<CircleMarker | null>(null);
   const onPinPressRef = useRef(onPinPress);
   const onBoundsChangeRef = useRef(onBoundsChange);
   const userLocationRef = useRef(userLocation);
+  const placesRef = useRef(places);
+  const activeIdRef = useRef(activeId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   onPinPressRef.current = onPinPress;
   onBoundsChangeRef.current = onBoundsChange;
   userLocationRef.current = userLocation;
+  placesRef.current = places;
+  activeIdRef.current = activeId;
 
   const center: [number, number] = userLocation
     ? [userLocation.latitude, userLocation.longitude]
@@ -82,6 +86,7 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
+      // Locate button
       const LocateControl = L.Control.extend({
         options: { position: 'bottomright' },
         onAdd() {
@@ -119,6 +124,10 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
       });
 
       mapRef.current = map;
+
+      // Apply any places/location that arrived while init was awaiting CSS+Leaflet
+      applyMarkers(map, L, placesRef.current, activeIdRef.current);
+      applyUserDot(map, L, userLocationRef.current);
     }
 
     init();
@@ -130,42 +139,79 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
     };
   }, []);
 
+  // Re-sync place pins whenever places or activeId changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let cancelled = false;
-
-    async function updateMarkers() {
+    (async () => {
       const map = mapRef.current;
       if (!map) return;
       const L = (await import('leaflet')).default;
       if (cancelled) return;
-
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-
-      places.forEach((place) => {
-        const isActive = place.id === activeId;
-        const emoji = categoryEmoji(place.category);
-        const icon = L.divIcon({
-          className: '',
-          html: pinHtml(emoji, isActive),
-          iconSize: [isActive ? 36 : 30, isActive ? 36 : 30],
-          iconAnchor: [isActive ? 18 : 15, isActive ? 36 : 30],
-        });
-        const marker = L.marker([place.latitude, place.longitude], { icon }).addTo(map);
-        marker.bindTooltip(place.name, {
-          direction: 'top',
-          offset: [0, -(isActive ? 36 : 30) - 4],
-          className: 'map-pin-tooltip',
-        });
-        marker.on('click', () => onPinPressRef.current(place));
-        markersRef.current.push(marker);
-      });
-    }
-
-    updateMarkers();
+      applyMarkers(map, L, places, activeId);
+    })();
     return () => { cancelled = true; };
   }, [places, activeId]);
+
+  // Re-sync user dot whenever GPS location changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
+    (async () => {
+      const map = mapRef.current;
+      if (!map) return;
+      const L = (await import('leaflet')).default;
+      if (cancelled) return;
+      applyUserDot(map, L, userLocation);
+    })();
+    return () => { cancelled = true; };
+  }, [userLocation]);
+
+  function applyMarkers(
+    map: LeafletMap,
+    L: typeof LeafletType,
+    currentPlaces: Place[],
+    currentActiveId: string | null,
+  ) {
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+    currentPlaces.forEach((place) => {
+      const isActive = place.id === currentActiveId;
+      const emoji = categoryEmoji(place.category);
+      const icon = L.divIcon({
+        className: '',
+        html: pinHtml(emoji, isActive),
+        iconSize: [isActive ? 36 : 30, isActive ? 36 : 30],
+        iconAnchor: [isActive ? 18 : 15, isActive ? 36 : 30],
+      });
+      const marker = L.marker([place.latitude, place.longitude], { icon }).addTo(map);
+      marker.bindTooltip(place.name, {
+        direction: 'top',
+        offset: [0, -(isActive ? 36 : 30) - 4],
+        className: 'map-pin-tooltip',
+      });
+      marker.on('click', () => onPinPressRef.current(place));
+      markersRef.current.push(marker);
+    });
+  }
+
+  function applyUserDot(
+    map: LeafletMap,
+    L: typeof LeafletType,
+    loc: { latitude: number; longitude: number } | null,
+  ) {
+    userDotRef.current?.remove();
+    userDotRef.current = null;
+    if (!loc) return;
+    userDotRef.current = L.circleMarker([loc.latitude, loc.longitude], {
+      radius: 9,
+      fillColor: '#2563EB',
+      color: 'white',
+      weight: 2.5,
+      opacity: 1,
+      fillOpacity: 1,
+    }).addTo(map);
+  }
 
   return (
     <div
