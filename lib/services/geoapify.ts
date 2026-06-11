@@ -19,10 +19,11 @@ export function boundsFromCenter(lat: number, lng: number, radiusDeg = 0.09): Bo
 const CATEGORIES = [
   'tourism.attraction',
   'tourism.sights',
-  'natural.park',
   'leisure.park',
-  'entertainment',
   'national_park',
+  'entertainment.museum',
+  'entertainment.culture',
+  'heritage',
 ].join(',');
 
 export async function fetchPlacesByBounds(bounds: Bounds): Promise<Place[]> {
