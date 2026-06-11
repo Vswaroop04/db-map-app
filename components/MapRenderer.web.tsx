@@ -44,6 +44,7 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let cancelled = false;
+    let ro: ResizeObserver | null = null;
 
     async function init() {
       const node = containerRef.current as unknown as HTMLDivElement | null;
@@ -51,11 +52,19 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
       const L = (await import('leaflet')).default;
       if (cancelled) return;
 
-      const map = L.map(node).setView(center, 13);
+      const map = L.map(node, { zoomControl: true }).setView(center, 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
+
+      // ResizeObserver fires when the container gets real pixel dimensions —
+      // more reliable than setTimeout for flex layouts that resolve after paint.
+      ro = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      ro.observe(node);
+
       map.on('moveend', () => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
@@ -66,18 +75,16 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoun
             minLon: b.getWest(),
             maxLon: b.getEast(),
           });
-        }, 400);
+        }, 1000);
       });
 
       mapRef.current = map;
-      // Leaflet measures the container at init time; if the div isn't painted yet
-      // tiles render at wrong positions. invalidateSize forces a remeasure.
-      setTimeout(() => map.invalidateSize(), 100);
     }
 
     init();
     return () => {
       cancelled = true;
+      ro?.disconnect();
       if (debounceRef.current) clearTimeout(debounceRef.current);
       mapRef.current?.remove();
       mapRef.current = null;
