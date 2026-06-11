@@ -18,12 +18,15 @@ export function categoryEmoji(category: string | null): string {
   if (!category) return '📍';
   const c = category.toLowerCase();
   if (c.includes('museum')) return '🏛️';
-  if (c.includes('park') || c.includes('garden')) return '🌳';
+  if (c.includes('park') || c.includes('garden') || c.includes('national')) return '🌳';
   if (c.includes('church') || c.includes('cathedral') || c.includes('mosque') || c.includes('temple')) return '⛪';
   if (c.includes('castle') || c.includes('palace')) return '🏰';
   if (c.includes('bridge')) return '🌉';
   if (c.includes('monument') || c.includes('memorial')) return '🗿';
   if (c.includes('square') || c.includes('plaza')) return '🏙️';
   if (c.includes('stadium') || c.includes('arena')) return '🏟️';
+  if (c.includes('attraction') || c.includes('sight') || c.includes('tourism')) return '🎯';
+  if (c.includes('entertainment')) return '🎭';
+  if (c.includes('beach') || c.includes('lake') || c.includes('river')) return '🏖️';
   return '📍';
 }

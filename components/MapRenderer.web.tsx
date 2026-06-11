@@ -3,12 +3,14 @@ import { StyleSheet, View } from 'react-native';
 import type { Map as LeafletMap, Marker as LeafletMarker } from 'leaflet';
 import { categoryEmoji } from '../lib/utils/distance';
 import { type Place } from '../lib/types/place';
+import { type Bounds } from '../lib/services/geoapify';
 
 type Props = {
   places: Place[];
   activeId: string | null;
   userLocation: { latitude: number; longitude: number } | null;
   onPinPress: (place: Place) => void;
+  onBoundsChange?: (bounds: Bounds) => void;
 };
 
 function pinHtml(emoji: string, active: boolean) {
@@ -25,12 +27,15 @@ function pinHtml(emoji: string, active: boolean) {
   "><span style="transform:rotate(45deg);display:block;">${emoji}</span></div>`;
 }
 
-export function MapRenderer({ places, activeId, userLocation, onPinPress }: Props) {
+export function MapRenderer({ places, activeId, userLocation, onPinPress, onBoundsChange }: Props) {
   const containerRef = useRef<View>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<LeafletMarker[]>([]);
   const onPinPressRef = useRef(onPinPress);
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   onPinPressRef.current = onPinPress;
+  onBoundsChangeRef.current = onBoundsChange;
 
   const center: [number, number] = userLocation
     ? [userLocation.latitude, userLocation.longitude]
@@ -51,12 +56,26 @@ export function MapRenderer({ places, activeId, userLocation, onPinPress }: Prop
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
+      map.on('moveend', () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          const b = map.getBounds();
+          onBoundsChangeRef.current?.({
+            minLat: b.getSouth(),
+            maxLat: b.getNorth(),
+            minLon: b.getWest(),
+            maxLon: b.getEast(),
+          });
+        }, 400);
+      });
+
       mapRef.current = map;
     }
 
     init();
     return () => {
       cancelled = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       mapRef.current?.remove();
       mapRef.current = null;
     };

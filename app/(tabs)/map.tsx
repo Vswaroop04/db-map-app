@@ -3,11 +3,11 @@ import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BottomSheet } from '../../components/BottomSheet';
 import { MapRenderer } from '../../components/MapRenderer';
-import { useLocationStore, type Place } from '../../lib/store/useLocationStore';
+import { useLocationStore, type Place, type Bounds } from '../../lib/store/useLocationStore';
 
 export default function MapScreen() {
   const router = useRouter();
-  const { filteredPlaces, userLocation, activeId, loading, error, fetchNearby, setActiveId } =
+  const { filteredPlaces, userLocation, activeId, loading, error, fetchNearby, fetchByBounds } =
     useLocationStore();
 
   useEffect(() => {
@@ -52,6 +52,7 @@ export default function MapScreen() {
         activeId={activeId}
         userLocation={userLocation}
         onPinPress={handlePinPress}
+        {...(Platform.OS === 'web' && { onBoundsChange: (bounds: Bounds) => fetchByBounds(bounds) })}
       />
 
       {Platform.OS !== 'web' && userLocation && (

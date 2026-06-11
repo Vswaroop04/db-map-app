@@ -3,9 +3,11 @@ import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { fetchCachedPlaces, upsertPlaces } from '../db/locations';
 import { fetchNearbyPlaces } from '../services/foursquare';
+import { fetchPlacesByBounds, boundsFromCenter, type Bounds } from '../services/geoapify';
 import { type Place } from '../types/place';
 
 export type { Place } from '../types/place';
+export type { Bounds } from '../services/geoapify';
 
 type LocationStore = {
   places: Place[];
@@ -17,6 +19,7 @@ type LocationStore = {
   loading: boolean;
   error: string | null;
   fetchNearby: () => Promise<void>;
+  fetchByBounds: (bounds: Bounds) => Promise<void>;
   setCategory: (category: string | null) => void;
   setActiveId: (id: string | null) => void;
 };
@@ -45,22 +48,27 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
       const { latitude, longitude } = loc.coords;
       set({ userLocation: { latitude, longitude } });
 
-      let places: Place[] = await fetchCachedPlaces(latitude, longitude);
+      let places: Place[];
 
-      // on web, Foursquare blocks browser requests (CORS) — read from Supabase cache only
-      if (places.length === 0 && Platform.OS !== 'web') {
-        const results = await fetchNearbyPlaces(latitude, longitude);
-        places = results.map((r) => ({
-          id: r.fsq_place_id,
-          name: r.name,
-          latitude: r.latitude,
-          longitude: r.longitude,
-          category: r.categories[0]?.name ?? null,
-          address: r.location.address ?? null,
-          city: r.location.locality ?? null,
-          country: r.location.country ?? null,
-        }));
-        upsertPlaces(places).catch(() => {});
+      if (Platform.OS === 'web') {
+        // Geoapify is CORS-safe — fetch live from the browser
+        places = await fetchPlacesByBounds(boundsFromCenter(latitude, longitude));
+      } else {
+        places = await fetchCachedPlaces(latitude, longitude);
+        if (places.length === 0) {
+          const results = await fetchNearbyPlaces(latitude, longitude);
+          places = results.map((r) => ({
+            id: r.fsq_place_id,
+            name: r.name,
+            latitude: r.latitude,
+            longitude: r.longitude,
+            category: r.categories[0]?.name ?? null,
+            address: r.location.address ?? null,
+            city: r.location.locality ?? null,
+            country: r.location.country ?? null,
+          }));
+          upsertPlaces(places).catch(() => {});
+        }
       }
 
       const categories = [
@@ -71,6 +79,24 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
     } catch {
       set({ error: 'Failed to load nearby places.', loading: false });
     }
+  },
+
+  fetchByBounds: async (bounds) => {
+    try {
+      const places = await fetchPlacesByBounds(bounds);
+      if (places.length === 0) return;
+      const { selectedCategory } = get();
+      const categories = [
+        ...new Set(places.map((p) => p.category).filter(Boolean) as string[]),
+      ].sort();
+      set({
+        places,
+        filteredPlaces: selectedCategory
+          ? places.filter((p) => p.category === selectedCategory)
+          : places,
+        categories,
+      });
+    } catch {}
   },
 
   setCategory: (category) => {
