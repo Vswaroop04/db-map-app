@@ -9,7 +9,9 @@
     "web": "expo start --web",
     "build:web": "expo export -p web && cp dist/index.html dist/404.html",
     "lint": "prettier --check .",
-    "lint:fix": "prettier --write ."
+    "lint:fix": "prettier --write .",
+    "deploy": "npm run build:web && wrangler deploy",
+    "preview": "npm run build:web && wrangler dev"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -39,7 +41,8 @@
     "@types/react": "~19.1.0",
     "prettier": "^3.8.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "wrangler": "^4.99.0"
   },
   "private": true
 }
