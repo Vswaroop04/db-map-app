@@ -3,7 +3,7 @@ import type * as LeafletType from 'leaflet';
 import type { Map as LeafletMap, Marker as LeafletMarker, CircleMarker } from 'leaflet';
 import { categoryEmoji } from '../lib/utils/distance';
 import { type Place } from '../lib/types/place';
-import { type Bounds } from '../lib/services/geoapify';
+import { type Bounds } from '../lib/types/place';
 
 type Props = {
   places: Place[];

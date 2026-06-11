@@ -3,11 +3,12 @@ import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { fetchCachedPlaces, upsertPlaces } from '../db/locations';
 import { fetchNearbyPlaces } from '../services/foursquare';
-import { fetchPlacesByBounds, boundsFromCenter, type Bounds } from '../services/geoapify';
-import { type Place } from '../types/place';
+import { type Place, type Bounds } from '../types/place';
 
 export type { Place } from '../types/place';
-export type { Bounds } from '../services/geoapify';
+export type { Bounds } from '../types/place';
+
+const WORKER_URL = process.env.EXPO_PUBLIC_WORKER_URL ?? '';
 
 type LocationStore = {
   places: Place[];
@@ -51,8 +52,8 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
       let places: Place[];
 
       if (Platform.OS === 'web') {
-        // Geoapify is CORS-safe — fetch live from the browser
-        places = await fetchPlacesByBounds(boundsFromCenter(latitude, longitude));
+        const res = await fetch(`${WORKER_URL}/locations?ll=${latitude},${longitude}&radius=5000`);
+        places = await res.json();
       } else {
         places = await fetchCachedPlaces(latitude, longitude);
         if (places.length === 0) {
@@ -83,8 +84,12 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
 
   fetchByBounds: async (bounds) => {
     try {
-      const places = await fetchPlacesByBounds(bounds);
-      if (places.length === 0) return;
+      const { minLat, maxLat, minLon, maxLon } = bounds;
+      const res = await fetch(
+        `${WORKER_URL}/locations?minLat=${minLat}&maxLat=${maxLat}&minLon=${minLon}&maxLon=${maxLon}`
+      );
+      const places: Place[] = await res.json();
+      if (!places.length) return;
       const { selectedCategory } = get();
       const categories = [
         ...new Set(places.map((p) => p.category).filter(Boolean) as string[]),
@@ -103,9 +108,7 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
     const { places } = get();
     set({
       selectedCategory: category,
-      filteredPlaces: category
-        ? places.filter((p) => p.category === category)
-        : places,
+      filteredPlaces: category ? places.filter((p) => p.category === category) : places,
     });
   },
 

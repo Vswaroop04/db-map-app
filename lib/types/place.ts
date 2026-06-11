@@ -8,3 +8,10 @@ export type Place = {
   city: string | null;
   country: string | null;
 };
+
+export type Bounds = {
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
+};
